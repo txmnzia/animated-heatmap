@@ -1,0 +1,17 @@
+{
+  "version": 8,
+  "name": "light",
+  "sources": {
+    "carto": {
+      "type": "raster",
+      "tiles": [
+        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png"
+      ],
+      "tileSize": 256,
+      "attribution": "© <a href='https://carto.com'>CartoDB</a> © <a href='https://openstreetmap.org'>OpenStreetMap</a> contributors"
+    }
+  },
+  "layers": [{ "id": "background", "type": "raster", "source": "carto" }]
+}

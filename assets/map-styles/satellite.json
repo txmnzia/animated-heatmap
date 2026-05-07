@@ -1,0 +1,15 @@
+{
+  "version": 8,
+  "name": "satellite",
+  "sources": {
+    "esri": {
+      "type": "raster",
+      "tiles": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "attribution": "Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS"
+    }
+  },
+  "layers": [{ "id": "background", "type": "raster", "source": "esri" }]
+}
