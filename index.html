@@ -6,14 +6,8 @@
   <title>Strava Heatmap</title>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="style.css">
-  <script type="importmap">
-  {
-    "imports": {
-      "maplibre-gl": "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.esm.js"
-    }
-  }
-  </script>
-  <script nomodule>document.body.innerHTML='<div class="compat-error">This app requires a modern browser (Chrome 89+, Firefox 108+, or Safari 16.4+).</div>';</script>
+  <!-- Load MapLibre as a global so ES modules don't need importmap support -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 </head>
 <body>
 
