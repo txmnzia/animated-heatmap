@@ -1,4 +1,5 @@
-import maplibregl from 'maplibre-gl';
+// MapLibre is loaded as a global script in index.html (avoids importmap requirement)
+const maplibregl = window.maplibregl;
 
 // Resolve style paths relative to this module file, not the page URL
 const _BASE = new URL('..', import.meta.url).href;
