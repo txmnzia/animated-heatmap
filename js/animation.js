@@ -68,7 +68,7 @@ export function prepareAnimation(activityIds, streamsMap) {
   state.anim.tracks = tracks;
   state.anim.maxTime = maxTime;
   state.anim.currentTime = 0;
-  state.anim.playbackRate = maxTime / state.settings.speed;
+  state.anim.playbackRate = 120; // fixed: 1h of activity = 30s of animation
 
   return { trackCount: tracks.length, maxTime };
 }
