@@ -75,6 +75,10 @@ export function prepareAnimation(activityIds, streamsMap) {
 
 // ── Frame rendering ───────────────────────────────────────────────────────────
 
+function lerp(a, b, t) {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
 function computeFrame(trackTimeSec) {
   const lines = [];
   const heads = [];
@@ -83,14 +87,26 @@ function computeFrame(trackTimeSec) {
     const idx = upperBound(track.times, trackTimeSec);
     if (idx < 2) continue;
 
+    // Interpolate fractionally between the last committed point and the next
+    // so the head (and line tip) moves smoothly rather than snapping.
+    let tip;
+    if (idx < track.coords.length) {
+      const t0 = track.times[idx - 1];
+      const t1 = track.times[idx];
+      const frac = t1 > t0 ? (trackTimeSec - t0) / (t1 - t0) : 0;
+      tip = lerp(track.coords[idx - 1], track.coords[idx], frac);
+    } else {
+      tip = track.coords[idx - 1];
+    }
+
     lines.push({
       type: 'Feature',
-      geometry: { type: 'LineString', coordinates: track.coords.slice(0, idx) },
+      geometry: { type: 'LineString', coordinates: [...track.coords.slice(0, idx), tip] },
     });
 
     heads.push({
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: track.coords[idx - 1] },
+      geometry: { type: 'Point', coordinates: tip },
     });
   }
 

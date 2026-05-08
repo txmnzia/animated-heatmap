@@ -72,10 +72,9 @@ export function attachTrackLayer(paint) {
     map.addLayer({
       id: HEADS_LAYER_ID, type: 'circle', source: HEADS_SOURCE_ID,
       paint: {
-        'circle-radius':       7,
+        'circle-radius':       4,
         'circle-color':        headsColor,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 0,
         'circle-opacity':      1,
       },
     });
