@@ -198,54 +198,70 @@ async function generate() {
   const activities = getFilteredActivities();
   if (!activities.length) return;
 
-  const ids = activities.map(a => a.id);
-  const cachedIds = await getCachedStreamIds(ids);
-  const missing = ids.filter(id => !cachedIds.has(id));
-
-  if (missing.length) {
-    showLoading(`Fetching GPS tracks…`);
-    showLoadingProgress(0, missing.length);
-    document.getElementById('btn-cancel-load').classList.remove('hidden');
-
-    let cancelled = false;
-    document.getElementById('btn-cancel-load').onclick = () => { cancelled = true; hideLoading(); };
-
-    await fetchStreams(ids, cachedIds, {
-      onProgress: (done, total) => {
-        if (cancelled) throw new Error('cancelled');
-        updateLoadingProgress(done, total, `GPS tracks: ${done} / ${total}`);
-      },
-      onRateWait: (secs) => updateLoadingMsg(`Rate limited — resuming in ${secs}s…`),
-    });
-
-    if (cancelled) return;
-    hideLoading();
-  }
-
-  // Build streams map from cache
-  const streamsMap = new Map();
-  for (const id of ids) {
-    const s = await getStream(id);
-    if (s) streamsMap.set(id, s);
-  }
-
-  const { trackCount, maxTime } = prepareAnimation(ids, streamsMap);
-  if (!trackCount) {
-    alert('No GPS data found for the selected activities.');
-    return;
-  }
-
-  // Attach map layer with current paint settings
-  const paint = buildTrackPaint();
-  attachTrackLayer(paint);
-
-  // Show animation bar
-  document.getElementById('btn-generate').classList.add('hidden');
-  document.getElementById('anim-bar').classList.remove('hidden');
-  document.getElementById('btn-export').removeAttribute('disabled');
-
+  // Stop any in-progress animation before starting a new one
+  stop();
   clearTrackData();
-  playAnimation();
+
+  const ids = activities.map(a => a.id);
+
+  try {
+    const cachedIds = await getCachedStreamIds(ids);
+    const missing = ids.filter(id => !cachedIds.has(id));
+
+    if (missing.length) {
+      showLoading(`Fetching GPS tracks…`);
+      showLoadingProgress(0, missing.length);
+      document.getElementById('btn-cancel-load').classList.remove('hidden');
+
+      let cancelled = false;
+      document.getElementById('btn-cancel-load').onclick = () => { cancelled = true; hideLoading(); };
+
+      await fetchStreams(ids, cachedIds, {
+        onProgress: (done, total) => {
+          if (cancelled) throw new Error('cancelled');
+          updateLoadingProgress(done, total, `GPS tracks: ${done} / ${total}`);
+        },
+        onRateWait: (secs) => updateLoadingMsg(`Rate limited — resuming in ${secs}s…`),
+      });
+
+      if (cancelled) return;
+      hideLoading();
+    }
+
+    // Build streams map from cache
+    const streamsMap = new Map();
+    for (const id of ids) {
+      const s = await getStream(id);
+      if (s) streamsMap.set(id, s);
+    }
+
+    if (!streamsMap.size) {
+      alert('No GPS data found. Make sure your activities have GPS tracks on Strava.');
+      return;
+    }
+
+    const { trackCount } = prepareAnimation(ids, streamsMap);
+    if (!trackCount) {
+      alert('No GPS data found for the selected activities.');
+      return;
+    }
+
+    // Attach (or refresh) the MapLibre track layer
+    attachTrackLayer(buildTrackPaint());
+
+    // Show animation controls
+    document.getElementById('btn-generate').classList.add('hidden');
+    document.getElementById('anim-bar').classList.remove('hidden');
+    document.getElementById('btn-export').removeAttribute('disabled');
+
+    playAnimation();
+
+  } catch (err) {
+    if (err.message === 'cancelled') return;
+    hideLoading();
+    console.error('Generate failed:', err);
+    alert(`Failed to generate animation: ${err.message}`);
+  }
 }
 
 function playAnimation() {

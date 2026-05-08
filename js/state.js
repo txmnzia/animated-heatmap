@@ -27,7 +27,7 @@ export const state = {
     color: '#FC4C02',
     mapStyle: 'dark',
     thickness: 2,
-    opacity: 0.6,
+    opacity: 70,   // stored as 0–100 to match the slider; divided by 100 when applied
     glow: true,
     speed: 60,   // wall-clock seconds for one full animation loop
   },
