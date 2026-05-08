@@ -274,8 +274,10 @@ function playAnimation() {
 
 function onAnimTick(currentTime, maxTime, stillPlaying) {
   document.getElementById('time-display').textContent = formatTrackTime(currentTime);
-  const fraction = maxTime > 0 ? currentTime / maxTime : 0;
-  document.getElementById('scrubber').value = Math.round(fraction * 1000);
+  if (!scrubbing) {
+    const fraction = maxTime > 0 ? currentTime / maxTime : 0;
+    document.getElementById('scrubber').value = Math.round(fraction * 1000);
+  }
   if (!stillPlaying) {
     document.getElementById('btn-playpause').textContent = '▶';
   }
@@ -437,6 +439,7 @@ document.getElementById('btn-generate').addEventListener('click', generate);
 
 // Animation controls
 document.getElementById('btn-restart').addEventListener('click', () => {
+  stop();
   clearTrackData();
   state.anim.currentTime = 0;
   playAnimation();
@@ -455,16 +458,22 @@ document.getElementById('btn-end').addEventListener('click', () => {
 });
 
 let scrubbing = false;
+let wasPlaying = false;
 const scrubber = document.getElementById('scrubber');
-scrubber.addEventListener('mousedown', () => { scrubbing = true; pause(); });
+scrubber.addEventListener('pointerdown', () => {
+  wasPlaying = state.anim.playing;
+  scrubbing = true;
+  pause();
+  document.getElementById('btn-playpause').textContent = '▶';
+});
 scrubber.addEventListener('input', () => {
-  seekTo(scrubber.value / 1000, (t, max) => {
+  seekTo(scrubber.value / 1000, (t) => {
     document.getElementById('time-display').textContent = formatTrackTime(t);
   });
 });
-scrubber.addEventListener('mouseup', () => {
+scrubber.addEventListener('pointerup', () => {
   scrubbing = false;
-  playAnimation();
+  if (wasPlaying) playAnimation();
 });
 
 // Export button
