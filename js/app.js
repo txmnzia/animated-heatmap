@@ -3,8 +3,8 @@ import { isAuthenticated, startOAuthFlow, extractOAuthCode, exchangeCode, discon
 import { getAllActivities, getLatestActivityDate, getStream, getCachedStreamIds } from './cache.js';
 import { fetchAllActivities, fetchStreams } from './api.js';
 import { computeClusters, renderTileCanvas } from './cluster.js';
-import { initMap, setMapStyle, attachTrackLayer, updateTrackPaint, flyToCluster, clearTrackData } from './map.js';
-import { prepareAnimation, play, pause, stop, restart, seekTo, jumpToEnd, formatTrackTime, getPlaybackProgress } from './animation.js';
+import { initMap, setMapStyle, attachTrackLayer, updateTrackPaint, flyToCluster, clearTrackData, fitTrackBounds } from './map.js';
+import { prepareAnimation, play, pause, stop, restart, seekTo, jumpToEnd, formatTrackTime, getPlaybackProgress, getTrackBounds } from './animation.js';
 import { recordAnimation, triggerDownload } from './export.js';
 
 // ── Startup ───────────────────────────────────────────────────────────────────
@@ -245,6 +245,9 @@ async function generate() {
       alert('No GPS data found for the selected activities.');
       return;
     }
+
+    // Zoom map to cover all tracks before animation starts
+    fitTrackBounds(getTrackBounds());
 
     // Attach (or refresh) the MapLibre track layer
     attachTrackLayer(buildTrackPaint());

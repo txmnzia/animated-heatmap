@@ -9,26 +9,28 @@ const STYLE_URLS = {
   satellite: `${_BASE}assets/map-styles/satellite.json`,
 };
 
-const SOURCE_ID = 'tracks';
-const LAYER_ID  = 'tracks-line';
+const SOURCE_ID       = 'tracks';
+const LAYER_ID        = 'tracks-line';
+const HEADS_SOURCE_ID = 'track-heads';
+const HEADS_LAYER_ID  = 'track-heads-circle';
 
 let map = null;
 let currentStyle = 'dark';
-let trackLayerPaint = null; // last used paint props for re-attaching after style switch
+let trackLayerPaint = null;
+let headsColor = '#FC4C02';
 
 export function initMap(containerId, style = 'dark') {
   currentStyle = style;
   map = new maplibregl.Map({
     container: containerId,
     style: STYLE_URLS[style],
-    center: [13.405, 52.52], // Berlin as default — overridden when cluster selected
+    center: [13.405, 52.52],
     zoom: 11,
     attributionControl: true,
-    preserveDrawingBuffer: false, // set true only during export
+    preserveDrawingBuffer: false,
   });
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-
   return map;
 }
 
@@ -40,41 +42,54 @@ export function setMapStyle(style) {
   if (!map || style === currentStyle) return;
   currentStyle = style;
   map.setStyle(STYLE_URLS[style]);
-  // Re-attach track layer after the new style loads
   map.once('style.load', () => {
     if (trackLayerPaint) attachTrackLayer(trackLayerPaint);
   });
 }
 
-// ── Track layers ──────────────────────────────────────────────────────────────
+// ── Track line layer ──────────────────────────────────────────────────────────
 
 export function attachTrackLayer(paint) {
   trackLayerPaint = paint;
+  headsColor = paint['line-color'] || headsColor;
+
   if (!map.getSource(SOURCE_ID)) {
-    map.addSource(SOURCE_ID, {
-      type: 'geojson',
-      data: emptyCollection(),
-    });
+    map.addSource(SOURCE_ID, { type: 'geojson', data: emptyCollection() });
   }
   if (!map.getLayer(LAYER_ID)) {
     map.addLayer({
-      id:     LAYER_ID,
-      type:   'line',
-      source: SOURCE_ID,
+      id: LAYER_ID, type: 'line', source: SOURCE_ID,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint,
     });
   }
+
+  // Heads layer — always on top of tracks
+  if (!map.getSource(HEADS_SOURCE_ID)) {
+    map.addSource(HEADS_SOURCE_ID, { type: 'geojson', data: emptyCollection() });
+  }
+  if (!map.getLayer(HEADS_LAYER_ID)) {
+    map.addLayer({
+      id: HEADS_LAYER_ID, type: 'circle', source: HEADS_SOURCE_ID,
+      paint: {
+        'circle-radius':       7,
+        'circle-color':        headsColor,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+        'circle-opacity':      1,
+      },
+    });
+  }
 }
 
-export function updateTrackData(geojson) {
-  const src = map?.getSource(SOURCE_ID);
-  if (src) src.setData(geojson);
+export function updateTrackData(linesGeoJSON, headsGeoJSON) {
+  map?.getSource(SOURCE_ID)?.setData(linesGeoJSON);
+  if (headsGeoJSON) map?.getSource(HEADS_SOURCE_ID)?.setData(headsGeoJSON);
 }
 
 export function clearTrackData() {
-  const src = map?.getSource(SOURCE_ID);
-  if (src) src.setData(emptyCollection());
+  map?.getSource(SOURCE_ID)?.setData(emptyCollection());
+  map?.getSource(HEADS_SOURCE_ID)?.setData(emptyCollection());
 }
 
 export function updateTrackPaint(paint) {
@@ -83,6 +98,14 @@ export function updateTrackPaint(paint) {
     map.setPaintProperty(LAYER_ID, prop, value);
   }
   trackLayerPaint = { ...trackLayerPaint, ...paint };
+
+  // Keep heads dot colour in sync
+  if (paint['line-color']) {
+    headsColor = paint['line-color'];
+    if (map.getLayer(HEADS_LAYER_ID)) {
+      map.setPaintProperty(HEADS_LAYER_ID, 'circle-color', headsColor);
+    }
+  }
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -91,26 +114,28 @@ export function flyToCluster(cluster) {
   const { minLat, maxLat, minLng, maxLng } = cluster.bounds;
   map.fitBounds(
     [[minLng, minLat], [maxLng, maxLat]],
-    { padding: 40, duration: 900, maxZoom: 17 }
+    { padding: 60, duration: 900, maxZoom: 15 }
+  );
+}
+
+export function fitTrackBounds(bounds) {
+  const { minLat, maxLat, minLng, maxLng } = bounds;
+  map.fitBounds(
+    [[minLng, minLat], [maxLng, maxLat]],
+    { padding: 60, duration: 700, maxZoom: 15 }
   );
 }
 
 // ── Export support ────────────────────────────────────────────────────────────
 
-// Recreate the map with preserveDrawingBuffer for canvas capture, then restore
 export async function withPreservedBuffer(cb) {
   const center = map.getCenter();
   const zoom   = map.getZoom();
   const style  = currentStyle;
 
-  // Destroy current map
   map.remove();
-
   map = new maplibregl.Map({
-    container: 'map',
-    style: STYLE_URLS[style],
-    center,
-    zoom,
+    container: 'map', style: STYLE_URLS[style], center, zoom,
     preserveDrawingBuffer: true,
   });
 
@@ -120,13 +145,9 @@ export async function withPreservedBuffer(cb) {
   try {
     await cb(map.getCanvas());
   } finally {
-    // Restore without preserveDrawingBuffer
     map.remove();
     map = new maplibregl.Map({
-      container: 'map',
-      style: STYLE_URLS[style],
-      center,
-      zoom,
+      container: 'map', style: STYLE_URLS[style], center, zoom,
       preserveDrawingBuffer: false,
     });
     map.once('style.load', () => {
