@@ -419,11 +419,6 @@ document.getElementById('input-glow').addEventListener('change', function () {
   applySettingsToMap();
   persistSettings();
 });
-document.getElementById('input-speed').addEventListener('input', function () {
-  state.settings.speed = parseInt(this.value);
-  document.getElementById('val-speed').textContent = this.value;
-  persistSettings();
-});
 
 // Re-render
 document.getElementById('btn-rerender').addEventListener('click', () => {
@@ -576,8 +571,6 @@ function syncSettingsUI() {
   document.getElementById('input-opacity').value   = s.opacity;
   document.getElementById('val-opacity').textContent = s.opacity;
   document.getElementById('input-glow').checked    = s.glow;
-  document.getElementById('input-speed').value     = s.speed;
-  document.getElementById('val-speed').textContent = s.speed;
 
   document.querySelectorAll('.style-btn[data-style]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.style === s.mapStyle);
