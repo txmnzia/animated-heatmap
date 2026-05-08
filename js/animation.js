@@ -68,7 +68,7 @@ export function prepareAnimation(activityIds, streamsMap) {
   state.anim.tracks = tracks;
   state.anim.maxTime = maxTime;
   state.anim.currentTime = 0;
-  state.anim.playbackRate = 120; // fixed: 1h of activity = 30s of animation
+  state.anim.playbackRate = 30; // 1h of activity = 2min of animation
 
   return { trackCount: tracks.length, maxTime };
 }
@@ -76,22 +76,28 @@ export function prepareAnimation(activityIds, streamsMap) {
 // ── Frame rendering ───────────────────────────────────────────────────────────
 
 function computeFrame(trackTimeSec) {
-  const features = [];
+  const lines = [];
+  const heads = [];
 
   for (const track of state.anim.tracks) {
     const idx = upperBound(track.times, trackTimeSec);
     if (idx < 2) continue;
 
-    features.push({
+    lines.push({
       type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates: track.coords.slice(0, idx),
-      },
+      geometry: { type: 'LineString', coordinates: track.coords.slice(0, idx) },
+    });
+
+    heads.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: track.coords[idx - 1] },
     });
   }
 
-  return { type: 'FeatureCollection', features };
+  return {
+    lines: { type: 'FeatureCollection', features: lines },
+    heads: { type: 'FeatureCollection', features: heads },
+  };
 }
 
 // ── Playback controls ─────────────────────────────────────────────────────────
@@ -112,13 +118,15 @@ export function play(onTick) {
 
     if (state.anim.currentTime >= state.anim.maxTime) {
       state.anim.currentTime = state.anim.maxTime;
-      updateTrackData(computeFrame(state.anim.currentTime));
+      const { lines, heads } = computeFrame(state.anim.currentTime);
+      updateTrackData(lines, heads);
       if (onTick) onTick(state.anim.currentTime, state.anim.maxTime, false);
       stop();
       return;
     }
 
-    updateTrackData(computeFrame(state.anim.currentTime));
+    const { lines, heads } = computeFrame(state.anim.currentTime);
+    updateTrackData(lines, heads);
     if (onTick) onTick(state.anim.currentTime, state.anim.maxTime, true);
     state.anim.rafHandle = requestAnimationFrame(tick);
   }
@@ -148,13 +156,28 @@ export function restart(onTick) {
 export function seekTo(fraction, onTick) {
   const t = fraction * state.anim.maxTime;
   state.anim.currentTime = t;
-  updateTrackData(computeFrame(t));
+  const { lines, heads } = computeFrame(t);
+  updateTrackData(lines, heads);
   if (onTick) onTick(t, state.anim.maxTime, state.anim.playing);
 }
 
 export function jumpToEnd() {
   state.anim.currentTime = state.anim.maxTime;
-  updateTrackData(computeFrame(state.anim.maxTime));
+  const { lines, heads } = computeFrame(state.anim.maxTime);
+  updateTrackData(lines, heads);
+}
+
+export function getTrackBounds() {
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const track of state.anim.tracks) {
+    for (const [lng, lat] of track.coords) {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    }
+  }
+  return { minLat, maxLat, minLng, maxLng };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
