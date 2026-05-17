@@ -1,39 +1,59 @@
-import { withPreservedBuffer, clearTrackData } from './map.js';
+import { getMap } from './map.js';
+import { getOverlayCanvas, clearOverlay } from './overlay.js';
 import { play, stop, restart } from './animation.js';
 import { state } from './state.js';
 
-// Records the animation playing in real time using the MediaRecorder API.
-// onProgress(fraction 0–1) called each animation tick; resolves with a Blob.
+// Records the animation by compositing the MapLibre GL canvas + overlay canvas
+// onto a hidden composite canvas, then capturing that stream via MediaRecorder.
+// preserveDrawingBuffer: true on the map means the GL canvas is always readable.
 export async function recordAnimation(format, onProgress) {
   const mimeType = pickMimeType(format);
   if (!mimeType) {
     throw new Error('Video recording is not supported in this browser. Please use Chrome or Firefox.');
   }
 
-  return withPreservedBuffer(async (canvas) => {
-    return new Promise((resolve, reject) => {
-      const stream   = canvas.captureStream(30);
-      const recorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: 8_000_000,
-      });
+  const mapCanvas     = getMap().getCanvas();
+  const overlayCanvas = getOverlayCanvas();
 
-      const chunks = [];
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onerror = e => reject(e.error || new Error('Recording failed'));
-      recorder.onstop  = () => resolve(new Blob(chunks, { type: mimeType }));
+  const composite = document.createElement('canvas');
+  composite.width  = mapCanvas.width;
+  composite.height = mapCanvas.height;
+  const cctx = composite.getContext('2d');
 
-      clearTrackData();
-      recorder.start(500);
+  let rafHandle = null;
+  function compositeFrame() {
+    cctx.clearRect(0, 0, composite.width, composite.height);
+    cctx.drawImage(mapCanvas, 0, 0);
+    // Overlay canvas uses the same physical pixel dimensions as the map canvas
+    cctx.drawImage(overlayCanvas, 0, 0);
+    rafHandle = requestAnimationFrame(compositeFrame);
+  }
 
-      // Play animation; resolve when it reaches the end
-      restart((currentTime, maxTime) => {
-        if (onProgress) onProgress(maxTime > 0 ? currentTime / maxTime : 0);
-        if (currentTime >= maxTime) {
-          recorder.stop();
-          stop();
-        }
-      });
+  return new Promise((resolve, reject) => {
+    const stream   = composite.captureStream(30);
+    const recorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond: 8_000_000,
+    });
+
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.onerror = e => reject(e.error || new Error('Recording failed'));
+    recorder.onstop  = () => {
+      cancelAnimationFrame(rafHandle);
+      resolve(new Blob(chunks, { type: mimeType }));
+    };
+
+    clearOverlay();
+    recorder.start(500);
+    rafHandle = requestAnimationFrame(compositeFrame);
+
+    restart((currentTime, maxTime) => {
+      if (onProgress) onProgress(maxTime > 0 ? currentTime / maxTime : 0);
+      if (currentTime >= maxTime) {
+        recorder.stop();
+        stop();
+      }
     });
   });
 }

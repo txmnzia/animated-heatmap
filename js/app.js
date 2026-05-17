@@ -3,14 +3,17 @@ import { isAuthenticated, startOAuthFlow, extractOAuthCode, exchangeCode, discon
 import { getAllActivities, getLatestActivityDate, getStream, getCachedStreamIds } from './cache.js';
 import { fetchAllActivities, fetchStreams } from './api.js';
 import { computeClusters, renderTileCanvas } from './cluster.js';
-import { initMap, setMapStyle, attachTrackLayer, updateTrackPaint, flyToCluster, clearTrackData, fitTrackBounds } from './map.js';
+import { initMap, setMapStyle, flyToCluster, fitTrackBounds } from './map.js';
+import { initOverlay, setOverlayStyle, clearOverlay } from './overlay.js';
 import { prepareAnimation, play, pause, stop, restart, seekTo, jumpToEnd, formatTrackTime, getPlaybackProgress, getTrackBounds } from './animation.js';
 import { recordAnimation, triggerDownload } from './export.js';
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
 loadPersistedState();
-initMap('map', state.settings.mapStyle);
+const _mapInst = initMap('map', state.settings.mapStyle);
+initOverlay(_mapInst);
+applySettingsToOverlay();
 
 (async () => {
   // Handle OAuth redirect callback
@@ -152,7 +155,7 @@ function selectCluster(cluster) {
 
   // Reset any in-progress animation
   stop();
-  clearTrackData();
+  clearOverlay();
   document.getElementById('anim-bar').classList.add('hidden');
   document.getElementById('btn-export').setAttribute('disabled', '');
   document.getElementById('btn-playpause').textContent = '▶';
@@ -192,7 +195,7 @@ function toggleType(type, chip) {
   }
   updateActivityCount();
   // If animation is showing, clear it — user must re-generate
-  clearTrackData();
+  clearOverlay();
   stop();
   document.getElementById('btn-generate').classList.remove('hidden');
   document.getElementById('anim-bar').classList.add('hidden');
@@ -219,7 +222,7 @@ async function generate() {
 
   // Stop any in-progress animation before starting a new one
   stop();
-  clearTrackData();
+  clearOverlay();
 
   const ids = activities.map(a => a.id);
 
@@ -268,9 +271,6 @@ async function generate() {
     // Zoom map to cover all tracks before animation starts
     fitTrackBounds(getTrackBounds());
 
-    // Attach (or refresh) the MapLibre track layer
-    attachTrackLayer(buildTrackPaint());
-
     // Show animation controls
     document.getElementById('btn-generate').classList.add('hidden');
     document.getElementById('anim-bar').classList.remove('hidden');
@@ -311,25 +311,11 @@ function speedLabel(speed) {
   return `1h = ${secs}s`;
 }
 
-// ── Track paint ───────────────────────────────────────────────────────────────
-
-export function buildTrackPaint() {
-  const { color, thickness, opacity, glow } = state.settings;
-  const paint = {
-    'line-color': color,
-    'line-width': thickness,
-    'line-opacity': opacity / 100,
-  };
-  if (glow) {
-    paint['line-blur'] = thickness * 1.5;
-  }
-  return paint;
-}
-
 // ── Settings panel ────────────────────────────────────────────────────────────
 
-function applySettingsToMap() {
-  updateTrackPaint(buildTrackPaint());
+function applySettingsToOverlay() {
+  const { color, thickness, opacity, glow } = state.settings;
+  setOverlayStyle({ color, thickness, opacity: opacity / 100, glow });
 }
 
 function applyColorToTiles() {
@@ -410,7 +396,7 @@ const colorInput = document.getElementById('input-color');
 colorInput.addEventListener('input', () => {
   state.settings.color = colorInput.value;
   document.getElementById('color-hex').textContent = colorInput.value.toUpperCase();
-  applySettingsToMap();
+  applySettingsToOverlay();
   applyColorToTiles();
   persistSettings();
 });
@@ -420,7 +406,7 @@ document.querySelectorAll('.preset').forEach(btn => {
     colorInput.value = c;
     state.settings.color = c;
     document.getElementById('color-hex').textContent = c.toUpperCase();
-    applySettingsToMap();
+    applySettingsToOverlay();
     applyColorToTiles();
     persistSettings();
   });
@@ -442,18 +428,18 @@ document.querySelectorAll('.style-btn').forEach(btn => {
 document.getElementById('input-thickness').addEventListener('input', function () {
   state.settings.thickness = parseFloat(this.value);
   document.getElementById('val-thickness').textContent = this.value;
-  applySettingsToMap();
+  applySettingsToOverlay();
   persistSettings();
 });
 document.getElementById('input-opacity').addEventListener('input', function () {
   state.settings.opacity = parseFloat(this.value);
   document.getElementById('val-opacity').textContent = this.value;
-  applySettingsToMap();
+  applySettingsToOverlay();
   persistSettings();
 });
 document.getElementById('input-glow').addEventListener('change', function () {
   state.settings.glow = this.checked;
-  applySettingsToMap();
+  applySettingsToOverlay();
   persistSettings();
 });
 document.getElementById('input-speed').addEventListener('input', function () {
@@ -466,7 +452,7 @@ document.getElementById('input-speed').addEventListener('input', function () {
 // Re-render
 document.getElementById('btn-rerender').addEventListener('click', () => {
   document.getElementById('settings-panel').classList.add('hidden');
-  clearTrackData();
+  clearOverlay();
   stop();
   document.getElementById('btn-generate').classList.remove('hidden');
   document.getElementById('anim-bar').classList.add('hidden');
@@ -478,7 +464,7 @@ document.getElementById('btn-generate').addEventListener('click', generate);
 // Animation controls
 document.getElementById('btn-restart').addEventListener('click', () => {
   stop();
-  clearTrackData();
+  clearOverlay();
   state.anim.currentTime = 0;
   playAnimation();
 });

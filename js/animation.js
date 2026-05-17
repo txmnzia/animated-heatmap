@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { updateTrackData, clearTrackData } from './map.js';
+import { drawFrame, forceFrame, clearOverlay } from './overlay.js';
 
 // Ramer-Douglas-Peucker simplification — keeps geometry accurate while
 // reducing point count for performance.
@@ -47,8 +47,8 @@ export function prepareAnimation(activityIds, streamsMap) {
     const s = streamsMap.get(id);
     if (!s?.latlng?.length) continue;
 
-    // RDP epsilon: ~5m in degree space (rough, good enough for screen display)
-    const simplified = rdp(s.latlng, 0.00005);
+    // RDP epsilon: ~10m in degree space — halves point count vs 5m with imperceptible quality loss
+    const simplified = rdp(s.latlng, 0.0001);
 
     // Re-sample time array to match simplified point indices
     const ratio = s.latlng.length / simplified.length;
@@ -58,7 +58,7 @@ export function prepareAnimation(activityIds, streamsMap) {
     if (duration > maxTime) maxTime = duration;
 
     tracks.push({
-      // MapLibre GeoJSON uses [lng, lat]
+      // MapLibre / Canvas projection expects [lng, lat]
       coords: simplified.map(([lat, lng]) => [lng, lat]),
       times,
       duration,
@@ -71,49 +71,6 @@ export function prepareAnimation(activityIds, streamsMap) {
   state.anim.playbackRate = state.settings.speed;
 
   return { trackCount: tracks.length, maxTime };
-}
-
-// ── Frame rendering ───────────────────────────────────────────────────────────
-
-function lerp(a, b, t) {
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-}
-
-function computeFrame(trackTimeSec) {
-  const lines = [];
-  const heads = [];
-
-  for (const track of state.anim.tracks) {
-    const idx = upperBound(track.times, trackTimeSec);
-    if (idx < 2) continue;
-
-    // Interpolate fractionally between the last committed point and the next
-    // so the head (and line tip) moves smoothly rather than snapping.
-    let tip;
-    if (idx < track.coords.length) {
-      const t0 = track.times[idx - 1];
-      const t1 = track.times[idx];
-      const frac = t1 > t0 ? (trackTimeSec - t0) / (t1 - t0) : 0;
-      tip = lerp(track.coords[idx - 1], track.coords[idx], frac);
-    } else {
-      tip = track.coords[idx - 1];
-    }
-
-    lines.push({
-      type: 'Feature',
-      geometry: { type: 'LineString', coordinates: [...track.coords.slice(0, idx), tip] },
-    });
-
-    heads.push({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: tip },
-    });
-  }
-
-  return {
-    lines: { type: 'FeatureCollection', features: lines },
-    heads: { type: 'FeatureCollection', features: heads },
-  };
 }
 
 // ── Playback controls ─────────────────────────────────────────────────────────
@@ -134,15 +91,13 @@ export function play(onTick) {
 
     if (state.anim.currentTime >= state.anim.maxTime) {
       state.anim.currentTime = state.anim.maxTime;
-      const { lines, heads } = computeFrame(state.anim.currentTime);
-      updateTrackData(lines, heads);
+      drawFrame(state.anim.currentTime);
       if (onTick) onTick(state.anim.currentTime, state.anim.maxTime, false);
       stop();
       return;
     }
 
-    const { lines, heads } = computeFrame(state.anim.currentTime);
-    updateTrackData(lines, heads);
+    drawFrame(state.anim.currentTime);
     if (onTick) onTick(state.anim.currentTime, state.anim.maxTime, true);
     state.anim.rafHandle = requestAnimationFrame(tick);
   }
@@ -165,22 +120,20 @@ export function stop() {
 export function restart(onTick) {
   stop();
   state.anim.currentTime = 0;
-  clearTrackData();
+  clearOverlay();
   play(onTick);
 }
 
 export function seekTo(fraction, onTick) {
   const t = fraction * state.anim.maxTime;
   state.anim.currentTime = t;
-  const { lines, heads } = computeFrame(t);
-  updateTrackData(lines, heads);
+  forceFrame(t);
   if (onTick) onTick(t, state.anim.maxTime, state.anim.playing);
 }
 
 export function jumpToEnd() {
   state.anim.currentTime = state.anim.maxTime;
-  const { lines, heads } = computeFrame(state.anim.maxTime);
-  updateTrackData(lines, heads);
+  forceFrame(state.anim.maxTime);
 }
 
 export function getTrackBounds() {
