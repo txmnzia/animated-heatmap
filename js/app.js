@@ -37,6 +37,10 @@ initMap('map', state.settings.mapStyle);
 
 // ── Sync flow ─────────────────────────────────────────────────────────────────
 
+// Set once a complete historical fetch has succeeded. Until then every startup
+// does a full sync so a previously-interrupted fetch can finish.
+const FULL_SYNC_KEY = 'strava_full_sync_done';
+
 async function runSync() {
   showLoading('Loading your activities…');
 
@@ -46,16 +50,21 @@ async function runSync() {
     await buildClusters(cached);
   }
 
-  // 2. Fetch new activities from Strava
+  // 2. Fetch from Strava. Do a full sync until we know we have all history;
+  //    after that use afterDate so startup only fetches new activities.
   try {
-    const afterDate = await getLatestActivityDate();
+    const fullSyncDone = localStorage.getItem(FULL_SYNC_KEY);
+    const afterDate = fullSyncDone ? await getLatestActivityDate() : null;
+
     const fresh = await fetchAllActivities({
       afterDate,
       onProgress: (fetched) => updateLoadingProgress(fetched, null, `Synced ${fetched} activities…`),
       onRateWait: (secs) => updateLoadingMsg(`Rate limited — resuming in ${secs}s…`),
     });
 
-    // If we got new data, re-cluster
+    if (!fullSyncDone) localStorage.setItem(FULL_SYNC_KEY, '1');
+
+    // Re-cluster whenever we got anything new (or on first load)
     if (fresh.length > 0 || !cached.length) {
       cached = await getAllActivities();
       await buildClusters(cached);
@@ -363,6 +372,7 @@ function validateAuthForm() {
 // Disconnect
 document.getElementById('btn-disconnect').addEventListener('click', () => {
   if (!confirm('Disconnect Strava and clear all cached data?')) return;
+  localStorage.removeItem(FULL_SYNC_KEY);
   disconnect();
   location.reload();
 });
@@ -370,11 +380,14 @@ document.getElementById('btn-disconnect').addEventListener('click', () => {
 // Re-sync
 document.getElementById('btn-resync').addEventListener('click', async () => {
   showLoading('Re-syncing activities…');
+  // Always do a full re-fetch so nothing is missed
+  localStorage.removeItem(FULL_SYNC_KEY);
   try {
-    const fresh = await fetchAllActivities({
+    await fetchAllActivities({
       onProgress: (n) => updateLoadingMsg(`Synced ${n} activities…`),
       onRateWait: (s) => updateLoadingMsg(`Rate limited — resuming in ${s}s…`),
     });
+    localStorage.setItem(FULL_SYNC_KEY, '1');
     const all = await getAllActivities();
     await buildClusters(all);
     hideLoading();
