@@ -471,7 +471,14 @@ scrubber.addEventListener('input', () => {
     document.getElementById('time-display').textContent = formatTrackTime(t);
   });
 });
-scrubber.addEventListener('pointerup', () => {
+// Listen on window so release outside the element still clears scrubbing state
+window.addEventListener('pointerup', () => {
+  if (!scrubbing) return;
+  scrubbing = false;
+  if (wasPlaying) playAnimation();
+});
+window.addEventListener('pointercancel', () => {
+  if (!scrubbing) return;
   scrubbing = false;
   if (wasPlaying) playAnimation();
 });
