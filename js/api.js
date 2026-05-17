@@ -103,13 +103,15 @@ export async function fetchStream(activityId, onRateWait) {
 // Fetches streams for a list of activity IDs respecting rate limits.
 // Skips IDs already present in cachedIds.
 // Calls onProgress(done, total) and onRateWait(secondsRemaining).
-export async function fetchStreams(activityIds, cachedIds, { onProgress, onRateWait } = {}) {
+// Pass signal (AbortController.signal) to cancel mid-way.
+export async function fetchStreams(activityIds, cachedIds, { onProgress, onRateWait, signal } = {}) {
   const needed = activityIds.filter(id => !cachedIds.has(id));
   const total = needed.length;
   let done = 0;
 
   // Process in batches of 5 concurrent requests
   for (let i = 0; i < needed.length; i += 5) {
+    if (signal?.aborted) break;
     const chunk = needed.slice(i, i + 5);
     await Promise.allSettled(chunk.map(id => fetchStream(id, onRateWait)));
     done += chunk.length;

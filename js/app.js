@@ -8,6 +8,31 @@ import { initOverlay, setOverlayStyle, clearOverlay } from './overlay.js';
 import { prepareAnimation, play, pause, stop, restart, seekTo, jumpToEnd, formatTrackTime, getPlaybackProgress, getTrackBounds } from './animation.js';
 import { recordAnimation, triggerDownload } from './export.js';
 
+// ── Background stream pre-fetch ───────────────────────────────────────────────
+
+// Silently fills the IndexedDB stream cache for all activities so that Generate
+// is instant next time. Aborted when the user clicks Generate so the foreground
+// fetch gets the full rate-limit budget.
+let _prefetchController = null;
+
+async function startBackgroundPrefetch() {
+  if (_prefetchController) _prefetchController.abort();
+  _prefetchController = new AbortController();
+  const { signal } = _prefetchController;
+
+  const ids = state.activities.map(a => a.id);
+  if (!ids.length) return;
+
+  const cachedIds = await getCachedStreamIds(ids);
+  const missing = ids.filter(id => !cachedIds.has(id));
+  if (!missing.length || signal.aborted) return;
+
+  await fetchStreams(missing, new Set(), {
+    signal,
+    onRateWait: (secs) => console.debug(`[prefetch] rate-limit wait: ${secs}s`),
+  });
+}
+
 // ── Startup ───────────────────────────────────────────────────────────────────
 
 loadPersistedState();
@@ -220,6 +245,9 @@ async function generate() {
   const activities = getFilteredActivities();
   if (!activities.length) return;
 
+  // Pause background prefetch so Generate gets the full rate-limit budget
+  if (_prefetchController) _prefetchController.abort();
+
   // Stop any in-progress animation before starting a new one
   stop();
   clearOverlay();
@@ -377,6 +405,7 @@ document.getElementById('btn-resync').addEventListener('click', async () => {
     const all = await getAllActivities();
     await buildClusters(all);
     hideLoading();
+    startBackgroundPrefetch();
   } catch (err) {
     hideLoading();
     alert(`Sync failed: ${err.message}`);
@@ -603,6 +632,9 @@ function showApp() {
 
   // Sync settings panel UI to persisted state
   syncSettingsUI();
+
+  // Pre-warm stream cache in background so Generate is instant on future visits
+  startBackgroundPrefetch();
 }
 
 function syncSettingsUI() {
