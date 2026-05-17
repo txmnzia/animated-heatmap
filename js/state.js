@@ -29,7 +29,7 @@ export const state = {
     thickness: 2,
     opacity: 70,   // stored as 0–100 to match the slider; divided by 100 when applied
     glow: true,
-    speed: 60,   // wall-clock seconds for one full animation loop
+    speed: 30,   // playback rate: track-seconds per wall-second (30 → 1h activity = 2min animation)
   },
 
   // Animation runtime — never persisted

@@ -78,7 +78,10 @@ async function buildClusters(activities) {
 
   // Compute active types from all activities
   const types = [...new Set(activities.map(a => a.sport_type || a.type).filter(Boolean))];
-  if (!state.activeTypes.size) types.forEach(t => state.activeTypes.add(t));
+  if (!state.activeTypes.size) {
+    const runTypes = types.filter(t => /run/i.test(t));
+    (runTypes.length ? runTypes : types).forEach(t => state.activeTypes.add(t));
+  }
 
   buildFilterChips(types);
 
@@ -137,6 +140,13 @@ function renderTileRow() {
 
 function selectCluster(cluster) {
   state.selectedCluster = cluster;
+
+  // Reset any in-progress animation
+  stop();
+  clearTrackData();
+  document.getElementById('anim-bar').classList.add('hidden');
+  document.getElementById('btn-export').setAttribute('disabled', '');
+  document.getElementById('btn-playpause').textContent = '▶';
 
   // Update tile selection UI
   document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
@@ -283,6 +293,15 @@ function onAnimTick(currentTime, maxTime, stillPlaying) {
   }
 }
 
+function speedLabel(speed) {
+  const secs = Math.round(3600 / speed);
+  if (secs >= 60) {
+    const m = Math.floor(secs / 60), s = secs % 60;
+    return s ? `1h = ${m}m${s}s` : `1h = ${m}min`;
+  }
+  return `1h = ${secs}s`;
+}
+
 // ── Track paint ───────────────────────────────────────────────────────────────
 
 export function buildTrackPaint() {
@@ -422,6 +441,12 @@ document.getElementById('input-opacity').addEventListener('input', function () {
 document.getElementById('input-glow').addEventListener('change', function () {
   state.settings.glow = this.checked;
   applySettingsToMap();
+  persistSettings();
+});
+document.getElementById('input-speed').addEventListener('input', function () {
+  state.settings.speed = parseInt(this.value);
+  document.getElementById('val-speed').textContent = speedLabel(state.settings.speed);
+  state.anim.playbackRate = state.settings.speed;
   persistSettings();
 });
 
@@ -590,6 +615,8 @@ function syncSettingsUI() {
   document.getElementById('input-opacity').value   = s.opacity;
   document.getElementById('val-opacity').textContent = s.opacity;
   document.getElementById('input-glow').checked    = s.glow;
+  document.getElementById('input-speed').value     = s.speed;
+  document.getElementById('val-speed').textContent = speedLabel(s.speed);
 
   document.querySelectorAll('.style-btn[data-style]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.style === s.mapStyle);

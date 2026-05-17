@@ -22,8 +22,8 @@ export async function computeClusters(activities) {
   const tightCells = buildGrid(withGPS, TIGHT_RES);
   const broadCells = buildGrid(withGPS, BROAD_RES);
 
-  const tightClusters = cellsToClusters(tightCells, TIGHT_MIN, 'neighborhood', TIGHT_RES, withGPS);
-  const broadClusters = cellsToClusters(broadCells, BROAD_MIN, 'city', BROAD_RES, withGPS);
+  const tightClusters = cellsToClusters(tightCells, TIGHT_MIN, 'neighborhood', TIGHT_RES, withGPS, 0.6);
+  const broadClusters = cellsToClusters(broadCells, BROAD_MIN, 'city', BROAD_RES, withGPS, 1.0);
 
   // Merge: deduplicate cells that resolve to the same place name
   const all = [...tightClusters, ...broadClusters];
@@ -91,8 +91,8 @@ function buildGrid(activities, res) {
   return grid;
 }
 
-function cellsToClusters(grid, minCount, type, res, allActivities) {
-  const half = res * 0.6; // slight expansion so border activities are captured
+function cellsToClusters(grid, minCount, type, res, allActivities, halfFactor = 0.6) {
+  const half = res * halfFactor;
   const clusters = [];
 
   for (const [, cell] of grid) {
