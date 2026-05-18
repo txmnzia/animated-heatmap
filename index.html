@@ -89,9 +89,6 @@
       <div id="filter-chips" class="filter-chips"></div>
       <div class="header-right">
         <span id="activity-count" class="count-badge" title="Activities in selected area"></span>
-        <button id="btn-wellness" class="wellness-badge" title="Body wellness — click to update">
-          <span class="wellness-badge-icon">♥</span><span id="wellness-badge-score">?</span>
-        </button>
         <button id="btn-resync" class="icon-btn" title="Re-sync activities from Strava">↻</button>
         <button id="btn-settings" class="icon-btn" title="Settings">⚙</button>
         <button id="btn-export" class="icon-btn" title="Export video" disabled>⬇</button>
@@ -166,52 +163,6 @@
 
       <section class="panel-section">
         <button id="btn-rerender" class="btn-secondary full-width">↺ Re-render animation</button>
-      </section>
-    </aside>
-
-    <!-- WELLNESS PANEL -->
-    <aside id="wellness-panel" class="wellness-panel hidden">
-      <div class="panel-header">
-        <span>Body Wellness</span>
-        <button id="btn-close-wellness" class="icon-btn">✕</button>
-      </div>
-
-      <!-- Big score display -->
-      <div class="wellness-current">
-        <div id="wellness-num" class="wellness-num">—</div>
-        <div id="wellness-status" class="wellness-status">Not set</div>
-        <div id="wellness-date" class="wellness-date"></div>
-      </div>
-
-      <!-- Score picker 1–10 -->
-      <section class="panel-section">
-        <label class="panel-label">How do you feel right now?</label>
-        <div id="wellness-picker" class="wellness-picker"></div>
-        <p class="panel-hint">1 = severe injury &nbsp;·&nbsp; 10 = peak health</p>
-      </section>
-
-      <!-- Training recommendation (hidden until score set) -->
-      <section class="panel-section hidden" id="wellness-rec-section">
-        <label class="panel-label">Training recommendation</label>
-        <div id="wellness-recommendation" class="wellness-rec"></div>
-        <p class="panel-hint" style="margin-top:8px">Based on Hooper Index &amp; ACWR injury-risk model.</p>
-      </section>
-
-      <!-- Reference scale -->
-      <section class="panel-section">
-        <label class="panel-label">Reference scale</label>
-        <div class="wellness-scale">
-          <div class="ws-row"><span class="ws-score ws-green">10</span><span class="ws-status">Peak</span><span class="ws-desc">No pain or fatigue. Optimally recovered.</span></div>
-          <div class="ws-row"><span class="ws-score ws-green">9</span><span class="ws-status">Excellent</span><span class="ws-desc">Minor residual fatigue. No musculoskeletal complaints.</span></div>
-          <div class="ws-row"><span class="ws-score ws-lime">8</span><span class="ws-status">Good</span><span class="ws-desc">Normal DOMS. No structural discomfort.</span></div>
-          <div class="ws-row"><span class="ws-score ws-lime">7</span><span class="ws-status">Adequate</span><span class="ws-desc">Persistent fatigue or mild localised ache.</span></div>
-          <div class="ws-row"><span class="ws-score ws-yellow">6</span><span class="ws-status">Below par</span><span class="ws-desc">Moderate fatigue or recurring discomfort.</span></div>
-          <div class="ws-row"><span class="ws-score ws-yellow">5</span><span class="ws-status">Caution</span><span class="ws-desc">Pain reproduced during activity. Drop volume.</span></div>
-          <div class="ws-row"><span class="ws-score ws-orange">4</span><span class="ws-status">Concern</span><span class="ws-desc">Pain modifying gait or mechanics. High risk.</span></div>
-          <div class="ws-row"><span class="ws-score ws-orange">3</span><span class="ws-status">High risk</span><span class="ws-desc">Pain at rest. Elevated tissue stress.</span></div>
-          <div class="ws-row"><span class="ws-score ws-red">2</span><span class="ws-status">Injured</span><span class="ws-desc">Acute injury. Unable to train normally.</span></div>
-          <div class="ws-row"><span class="ws-score ws-red">1</span><span class="ws-status">Severe</span><span class="ws-desc">Severe pain or structural injury. Stop all training.</span></div>
-        </div>
       </section>
     </aside>
 
