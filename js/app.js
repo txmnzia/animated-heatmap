@@ -636,8 +636,8 @@ function showApp() {
   // Pre-warm stream cache in background so Generate is instant on future visits
   startBackgroundPrefetch();
 
+  buildWellnessPicker(); // must run before loadWellness so buttons exist for active-state sync
   loadWellness();
-  buildWellnessPicker();
 }
 
 function syncSettingsUI() {
