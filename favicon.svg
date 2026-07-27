@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#131829"/><stop offset="1" stop-color="#090c14"/></linearGradient>
+    <linearGradient id="ic" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c3aed"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".6" r=".52"><stop offset="0" stop-color="#7c3aed" stop-opacity=".38"/><stop offset="1" stop-color="#7c3aed" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/><rect x="1.5" y="1.5" width="509" height="509" rx="110.5" fill="none" stroke="#232c45" stroke-width="3"/>
+  <circle cx="256" cy="292" r="150" fill="url(#glow)"/>
+  <g transform="translate(100,110) scale(13)" fill="url(#ic)" stroke="none"><path d="M5.5 18.6 12 12 17 7.2" fill="none" stroke="url(#ic)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.5 3.4"/><circle cx="18.3" cy="5.9" r="2.8"/></g>
+</svg>
